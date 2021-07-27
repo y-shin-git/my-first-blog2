@@ -1,0 +1,180 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+<meta charset="utf-8">
+{% comment %} <link rel="icon" href="{% static 'img/favicon.png' %}"> {% endcomment %}
+<title>location_intelligence</title>
+<link rel="stylesheet" type="text/css" href="{% static 'css/style.css' %}" />
+<link rel="stylesheet" type="text/css" href="{% static 'css/style.min.css' %}" />
+<link rel="stylesheet" type="text/css" href="{% static 'css/style.css' %}" />
+<link rel="stylesheet" type="text/css" href="{% static 'css/bootstrap.min.css' %}" />　<!--bootstrap ver4.3.1 -->
+</head>
+
+<body>
+<div id="container">
+    <div class="header clearfix">
+        <img class="header_img" src="{% static 'img/header.png' %}">
+        <div class="head_menu">
+            <input id="move-address" class="" type="textbox" style="line-height:1.6em;font-size:16px" name='move-address'>
+            <input type="button" class="menu_button" value="ジオコーディング" onclick="getLatLng()">
+            <label><select name="pref">
+                {% for pref in pref_list %}
+                    <option value="{{ pref.id }}">{{ pref.都道府県名 }}</option>
+                {% endfor %}
+            </select></label>
+            {% comment %} <button type="button" class="btn btn-primary mb-12" value="現在地に戻る" onclick="currentPoint()" style="height: 38px;">現在地に戻る</button> {% endcomment %}
+            <a class="block menu_button" href="../accounts/log_out">ログアウト</a>
+        </div>
+    </div>
+
+    <img class="setting-button" src="{% static 'img/setting_icon.png' %}" data-toggle="modal" data-target="#Modal2">
+    <img class="setting-button mt70" src="{% static 'img/csv_icon.png' %}" data-toggle="modal" data-target="#Modal1">
+
+    <div id="map"></div>
+
+    <div class="modal fade" id="Modal1" tabindex="-1" role="dialog" aria-labelledby="basicModal" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content modal-height">
+                <div class="modal-header">
+                    <h4 class="modal-title" id="myModalLabel">表示項目を設定</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="w100p">
+                        <p class="modal-contents-title txt-center">電話帳データ</p>
+                        <p>
+                        <div class="container">
+                            <div id="tree"></div>
+                        </div>
+                        </p>
+                        <script type="text/javascript" src="{% static 'js/jquery-3.5.1.slim.min.js' %}"></script>
+                        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+                        <script type="text/javascript" src="{% static 'js/bootstrap.min.js' %}"></script>
+                        <script type="text/javascript" src="{% static 'js/bootstrap-treeview.min.js' %}"></script>
+                        <script>
+                            var tree_view = [
+                                {
+                                    text: "国の機関",
+                                    nodes: [
+                                        {
+                                            text: "総務省",
+                                            nodes: [
+                                                {
+                                                    text: "総務省2"
+                                                },
+                                                {
+                                                    text: "総務省3"
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            text: "厚生労働省"
+                                        }
+                                    ]
+                                },
+                                {
+                                    text: "都道府県"
+                                },
+                                {
+                                    text: "市区町村"
+                                },
+                                {
+                                    text: "郵便局"
+                                },
+                                {
+                                    text: "警察"
+                                }
+                            ];
+                        $('#tree').treeview({ data: tree_view }); 
+                        </script>
+                    </div>
+                    
+                    <div class="w100p modal-center">
+                        <p class="modal-contents-title txt-center">クローリングデータ</p>
+                        
+                    </div>
+
+                    <div class="w100p">
+                        <p class="modal-contents-title txt-center">ユーザーデータ</p>
+
+                    </div>
+                </div>
+
+
+                <div class="modal-footer">
+                    <form id="csv_upload" action="/chomokun/poi_file_upload" method="POST" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        {{ form.as_p }}
+                        <button type="button" onclick="csv_point()">UPLOAD</button>
+                    </form>
+                    <input class="fl" type="button" value="csvデータ表示" onclick="csvMarkers()" style="height: 30px;">
+                    <button class="fl" type="button" class="btn btn-default" data-dismiss="modal">閉じる</button>
+                    <button class="fl" type="button" class="btn btn-danger">削除</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="Modal2" tabindex="-1" role="dialog" aria-labelledby="basicModal" aria-hidden="true">
+        <div class="modal-dialog modal-mdl">
+            <div class="modal-content chomo-height">
+                <div class="modal-header">
+                    <h4 class="modal-title" id="myModalLabel">表示設定</h4>
+                </div>
+                <div class="modal-body chomo_body">
+                    <div class="w100p">
+                        <p class="modal-contents-title txt-center">表示ポリゴン設定</p>
+                        <div class="polygon-setting">
+                            <form id="polygon_box" name="form1">
+                                <p class="polygon-text">
+                                    <label><input id="disable_nutton" class="radio-button" type="radio" name="polygon" value="都道府県">都道府県(工事中)</label><br>
+                                    <label><input id="town-k-polygon" class="radio-button" type="radio" name="polygon" value="町丁目（国勢調査）">町丁目（国勢調査）工事中</label><br>
+                                    <label><input id="town-z-polygon" class="radio-button" type="radio" name="polygon" value="町丁目（ゼンリン）">町丁目（ゼンリン）工事中</label><br>
+                                    <label><input class="radio-button" type="radio" name="polygon" value="メッシュ">メッシュ（工事中）</label><br>
+                                    <label><input class="radio-button" type="radio" name="polygon" value="ジオハッシュ">ジオハッシュ（工事中）</label><br>
+                                    <label><input id="city-polygon" class="radio-button" type="radio" name="polygon" value="市区町村" onclick="showchomo()" checked>
+                                </p>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="w100p herf-border">
+                        <p class="modal-contents-title txt-center">表示ターゲット設定</p>
+                        <div class="chomo-setting">
+                            <form  name="form2">
+                                <p class="chomo-text">
+                                <label><input class="radio-button" type="radio" name="chomo" value="都道府県" checked>chomonicx</label><br>
+                                    <label><input class="radio-button" type="radio" name="chomo" value="市区町村" >人口</label><br>
+                                <label><input class="radio-button" type="radio" name="chomo" value="町丁目（国勢調査）">世帯数</label><br>
+                                    <label><input class="radio-button" type="radio" name="chomo" value="町丁目（ゼンリン）">世帯年収別</label>
+                                    <select name="chomo">
+                                        <option class="nenshu" value=”nenshu1”>年収1500万円以上世帯数</option>
+                                        <option class="nenshu" value=”nenshu2”>年収1000万円以上世帯数</option>
+                                        <option class="nenshu" value=”nenshu3”>年収1000〜1500万円未満世帯数</option>
+                                        <option class="nenshu" value=”nenshu4”>年収700〜1000万円未満世帯数</option>
+                                        <option class="nenshu" value=”nenshu5”>年収500〜700万円未満世帯数</option>
+                                        <option class="nenshu" value=”nenshu6”>年収300〜500万円未満世帯数</option>
+                                        <option class="nenshu" value=”nenshu7”>年収300万円未満世帯数</option>
+                                    </select>工事中<br>
+                                    <label><input class="radio-button" type="radio" name="chomo" value="メッシュ">貯蓄別</label>工事中<br>
+                                </p>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="m-auto" type="button" class="btn btn-default btn-black" onclick="show()" data-dismiss="modal">決定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="{% static 'js/jquery-3.6.0.min.js' %}"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+<script type="text/javascript" src="{% static 'js/gmap.js' %}"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA51Hm5QEhGSsIpDMu7B-8g7fA_jjsgDpc&callback=initMap&libraries=&v=weekly" async></script>
+</body>
+</html>
